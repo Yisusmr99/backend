@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 
-import { AppDataSource } from './db/data-source'; // ajusta la ruta si tu datasource está en otro lugar
+import { AppDataSource } from './config/database'; 
 import authRoutes from './routes/auth.routes';
 import ventanillasRoutes from './routes/ventanillas.routes';
 

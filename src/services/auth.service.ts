@@ -1,4 +1,4 @@
-import { AppDataSource } from '../db/data-source';
+import { AppDataSource } from '../config/database';
 import { User } from '../entities/User';
 import { RefreshToken } from '../entities/RefreshToken';
 import { comparePassword, hashPassword, hashToken, compareToken } from '../utils/crypto';
