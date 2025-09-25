@@ -1,27 +1,39 @@
-import 'dotenv/config';
+import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
+import { env } from './config/env';
+import { AppDataSource } from './db/data-source';
+import authRoutes from './routes/auth.routes';
+import { errorHandler } from './middleware/errorHandler';
 
+
+async function bootstrap() {
+await AppDataSource.initialize();
 const app = express();
+
+
 app.use(express.json());
-app.use(cors({ origin: process.env.SOCKET_CORS_ORIGIN?.split(',') ?? ['http://localhost:5173'] }));
+app.use(cors({ origin: env.corsOrigin, credentials: true }));
 app.use(helmet());
 app.use(morgan('dev'));
 
-app.get('/health', (_req, res) => res.json({ ok: true }));
 
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-    cors: { origin: process.env.SOCKET_CORS_ORIGIN?.split(',') ?? ['http://localhost:5173'] }
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.use('/api/auth', authRoutes);
+
+
+app.use(errorHandler);
+
+
+app.listen(env.port, () => {
+console.log(`API escuchando en http://localhost:${env.port}`);
 });
+}
 
-io.on('connection', (socket) => {
-    console.log('socket connected', socket.id);
+
+bootstrap().catch((e) => {
+console.error('Error al iniciar:', e);
+process.exit(1);
 });
-
-const PORT = Number(process.env.PORT ?? 4000);
-httpServer.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
