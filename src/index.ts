@@ -3,37 +3,44 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { env } from './config/env';
-import { AppDataSource } from './db/data-source';
+import dotenv from 'dotenv';
+
+import { AppDataSource } from './db/data-source'; // ajusta la ruta si tu datasource está en otro lugar
 import authRoutes from './routes/auth.routes';
-import { errorHandler } from './middleware/errorHandler';
+import ventanillasRoutes from './routes/ventanillas.routes';
 
+dotenv.config();
 
-async function bootstrap() {
-await AppDataSource.initialize();
 const app = express();
 
-
-app.use(express.json());
-app.use(cors({ origin: env.corsOrigin, credentials: true }));
+// Middlewares
 app.use(helmet());
+app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
 app.use(morgan('dev'));
+app.use(express.json());
 
-
+// Healthcheck
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
+// Rutas
 app.use('/api/auth', authRoutes);
+app.use('/api/ventanillas', ventanillasRoutes);
 
+// 404
+app.use((_req, res) => res.status(404).json({ message: 'Not found' }));
 
-app.use(errorHandler);
+// Arranque
+const PORT = Number(process.env.PORT || 4000);
 
+AppDataSource.initialize()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`API escuchando en http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Error al iniciar:', err);
+    process.exit(1);
+  });
 
-app.listen(env.port, () => {
-console.log(`API escuchando en http://localhost:${env.port}`);
-});
-}
-
-
-bootstrap().catch((e) => {
-console.error('Error al iniciar:', e);
-process.exit(1);
-});
+export default app;
