@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Ventanilla } from '../models/ventanilla.entity';
 import { AppDataSource } from '../config/database';
+import { success, error as errorResponse } from '../utils/response.util';
 
 // Validación básica
 function validateVentanilla(data: any): string | null {
@@ -17,9 +18,9 @@ export const getVentanillas = async (_req: Request, res: Response) => {
   try {
     const repo = AppDataSource.getRepository(Ventanilla);
     const ventanillas = await repo.find();
-    res.json(ventanillas);
+    return success(res, ventanillas, 'Lista de ventanillas');
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener ventanillas', details: err });
+    return errorResponse(res, 'Error al obtener ventanillas', 500, err);
   }
 };
 
@@ -29,43 +30,55 @@ export const getVentanillaById = async (req: Request, res: Response) => {
     const repo = AppDataSource.getRepository(Ventanilla);
     const ventanilla = await repo.findOneBy({ id: Number(id) });
     if (!ventanilla) {
-      return res.status(404).json({ error: 'Ventanilla no encontrada' });
+      return errorResponse(res, 'Ventanilla no encontrada', 404);
     }
-    res.json(ventanilla);
+    return success(res, ventanilla, 'Ventanilla encontrada');
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener ventanilla', details: err });
+    return errorResponse(res, 'Error al obtener ventanilla', 500, err);
   }
 };
 
 export const createVentanilla = async (req: Request, res: Response) => {
-  const error = validateVentanilla(req.body);
-  if (error) return res.status(400).json({ error });
+  // Solo permitir los campos válidos
+  const allowedFields = ['numero', 'etiqueta', 'activo'];
+  const extraFields = Object.keys(req.body).filter(key => !allowedFields.includes(key));
+  if (extraFields.length > 0) {
+    return errorResponse(res, `Campos no permitidos: ${extraFields.join(', ')}`, 400);
+  }
+  const errorMsg = validateVentanilla(req.body);
+  if (errorMsg) return errorResponse(res, errorMsg, 400);
   try {
     const repo = AppDataSource.getRepository(Ventanilla);
     const { numero, etiqueta, activo = true } = req.body;
     const nueva = repo.create({ numero, etiqueta, activo });
     const ventanilla = await repo.save(nueva);
-    res.status(201).json(ventanilla);
+    return success(res, ventanilla, 'Ventanilla creada', 201);
   } catch (err) {
-    res.status(500).json({ error: 'Error al crear ventanilla', details: err });
+    return errorResponse(res, 'Error al crear ventanilla', 500, err);
   }
 };
 
 export const updateVentanilla = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const error = validateVentanilla(req.body);
-  if (error) return res.status(400).json({ error });
+  // Solo permitir los campos válidos
+  const allowedFields = ['numero', 'etiqueta', 'activo'];
+  const extraFields = Object.keys(req.body).filter(key => !allowedFields.includes(key));
+  if (extraFields.length > 0) {
+    return errorResponse(res, `Campos no permitidos: ${extraFields.join(', ')}`, 400);
+  }
+  const errorMsg = validateVentanilla(req.body);
+  if (errorMsg) return errorResponse(res, errorMsg, 400);
   try {
     const repo = AppDataSource.getRepository(Ventanilla);
     const ventanilla = await repo.findOneBy({ id: Number(id) });
     if (!ventanilla) {
-      return res.status(404).json({ error: 'Ventanilla no encontrada' });
+      return errorResponse(res, 'Ventanilla no encontrada', 404);
     }
     repo.merge(ventanilla, req.body);
     const updated = await repo.save(ventanilla);
-    res.json(updated);
+    return success(res, updated, 'Ventanilla actualizada');
   } catch (err) {
-    res.status(500).json({ error: 'Error al actualizar ventanilla', details: err });
+    return errorResponse(res, 'Error al actualizar ventanilla', 500, err);
   }
 };
 
@@ -75,11 +88,11 @@ export const deleteVentanilla = async (req: Request, res: Response) => {
     const repo = AppDataSource.getRepository(Ventanilla);
     const ventanilla = await repo.findOneBy({ id: Number(id) });
     if (!ventanilla) {
-      return res.status(404).json({ error: 'Ventanilla no encontrada' });
+      return errorResponse(res, 'Ventanilla no encontrada', 404);
     }
     await repo.remove(ventanilla);
-    res.json({ message: 'Ventanilla eliminada correctamente' });
+    return success(res, null, 'Ventanilla eliminada correctamente');
   } catch (err) {
-    res.status(500).json({ error: 'Error al eliminar ventanilla', details: err });
+    return errorResponse(res, 'Error al eliminar ventanilla', 500, err);
   }
 };
