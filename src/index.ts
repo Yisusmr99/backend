@@ -1,42 +1,46 @@
-
-import 'dotenv/config';
+import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-import ventanillasRouter from './routes/ventanillas.routes';
-import { AppDataSource } from './config/database';
+import dotenv from 'dotenv';
 
+import { AppDataSource } from './config/database'; 
+import authRoutes from './routes/auth.routes';
+import ventanillasRoutes from './routes/ventanillas.routes';
+
+dotenv.config();
 
 const app = express();
-app.use(express.json());
-app.use(cors({ origin: process.env.SOCKET_CORS_ORIGIN?.split(',') ?? ['http://localhost:5173'] }));
+
+// Middlewares
 app.use(helmet());
+app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
 app.use(morgan('dev'));
+app.use(express.json());
 
-// Endpoint para pruebas de ventanillas
-app.use('/ventanillas', ventanillasRouter);
+// Healthcheck
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-app.get('/health', (_req, res) => res.json({ ok: true }));
+// Rutas
+app.use('/api/auth', authRoutes);
+app.use('/api/ventanillas', ventanillasRoutes);
 
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-    cors: { origin: process.env.SOCKET_CORS_ORIGIN?.split(',') ?? ['http://localhost:5173'] }
-});
+// 404
+app.use((_req, res) => res.status(404).json({ message: 'Not found' }));
 
-io.on('connection', (socket) => {
-    console.log('socket connected', socket.id);
-});
+// Arranque
+const PORT = Number(process.env.PORT || 4000);
 
-
-// Inicializar la conexión a la base de datos antes de iniciar el servidor
-const PORT = Number(process.env.PORT ?? 4000);
 AppDataSource.initialize()
-    .then(() => {
-        httpServer.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
-    })
-    .catch((err) => {
-        console.error('Error al inicializar la base de datos:', err);
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`API escuchando en http://localhost:${PORT}`);
     });
+  })
+  .catch((err) => {
+    console.error('Error al iniciar:', err);
+    process.exit(1);
+  });
+
+export default app;
