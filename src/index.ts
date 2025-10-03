@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import http from 'http';
 
 import { AppDataSource } from './config/database';
+import { env } from './config/env';
 import authRoutes from './routes/auth.routes';
 import ventanillasRoutes from './routes/ventanillas.routes';
 import ticketsRoutes from './routes/tickets.routes';
@@ -19,7 +20,7 @@ const app = express();
 
 // ===== Middlewares (siempre antes de las rutas) =====
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }));
+app.use(cors({ origin: env.corsOrigin }));
 app.use(morgan('dev'));
 app.use(express.json());
 
@@ -35,7 +36,7 @@ app.use('/api/tickets', ticketsRoutes); // <- tickets
 app.use((_req, res) => res.status(404).json({ message: 'Not found' }));
 
 // ===== Arranque =====
-const PORT = Number(process.env.PORT || 4000);
+const PORT = env.port;
 
 // Creamos un servidor HTTP en lugar de usar app.listen directamente
 const server = http.createServer(app);
@@ -47,7 +48,8 @@ AppDataSource.initialize()
     
     // Iniciamos el servidor HTTP
     server.listen(PORT, () => {
-      console.log(`API escuchando en http://localhost:${PORT}`);
+      console.log(`API escuchando en puerto ${PORT}`);
+      console.log(`Entorno: ${env.nodeEnv}`);
       console.log('WebSocket server inicializado');
     });
   })

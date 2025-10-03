@@ -1,6 +1,7 @@
 // src/services/socket.service.ts
 import { Server as SocketIOServer } from 'socket.io';
 import http from 'http';
+import { env } from '../config/env';
 
 let io: SocketIOServer | null = null;
 
@@ -11,10 +12,14 @@ let io: SocketIOServer | null = null;
 export function initializeSocketIO(server: http.Server) {
     io = new SocketIOServer(server, {
         cors: {
-            origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+            origin: env.corsOrigin,
             methods: ['GET', 'POST'],
             credentials: true
-        }
+        },
+        // Configuración para trabajar con proxies (necesario en Railway)
+        path: '/socket.io',
+        transports: ['websocket', 'polling'],
+        allowEIO3: true
     });
 
     io.on('connection', (socket) => {
