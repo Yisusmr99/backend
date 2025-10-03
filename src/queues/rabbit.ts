@@ -47,6 +47,23 @@ export async function publish(routingKey: string, payload: any): Promise<void> {
   console.log(`[rabbit] publish rk='${routingKey}' size=${body.length} ok=${ok}`);
 }
 
+/** Publica JSON directamente a una cola específica */
+export async function sendToQueue(queueName: string, payload: any): Promise<void> {
+  const channel = await ensureChannel();
+  
+  // Aseguramos que la cola exista (durable=true)
+  await channel.assertQueue(queueName, { durable: true });
+  
+  const body = Buffer.from(JSON.stringify(payload));
+  
+  const ok = channel.sendToQueue(queueName, body, {
+    contentType: 'application/json',
+    persistent: true,
+  });
+
+  console.log(`[rabbit] sendToQueue='${queueName}' size=${body.length} ok=${ok}`);
+}
+
 /** Cierre ordenado (opcional) */
 export async function closeRabbit(): Promise<void> {
   try { await ch?.close(); } catch {}

@@ -4,7 +4,8 @@ import {
   getVentanillaById,
   createVentanilla,
   updateVentanilla,
-  deleteVentanilla
+  deleteVentanilla,
+  toggleVentanillaActivo
 } from '../controllers/ventanillas.controller';
 
 const router = Router();
@@ -14,5 +15,7 @@ router.get('/:id', getVentanillaById);
 router.post('/', createVentanilla);
 router.put('/:id', updateVentanilla);
 router.delete('/:id', deleteVentanilla);
+
+router.put('/:id/change-status', toggleVentanillaActivo);
 
 export default router;
