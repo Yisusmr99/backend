@@ -26,4 +26,10 @@ rabbitmq: {
 url: process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672',
 exchange: process.env.RABBITMQ_EXCHANGE || 'turnos.topic',
 }
+,
+telegram: {
+	botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+	chatId: process.env.TELEGRAM_CHAT_ID || '',
+	apiBase: process.env.TELEGRAM_API_BASE || 'https://api.telegram.org'
+}
 };
