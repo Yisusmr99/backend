@@ -8,11 +8,11 @@ export class Turno {
   @Column({ type: 'enum', enum: ['C', 'V'], default: 'C' })
   tipo!: 'C' | 'V';
 
-  @Column({ type: 'varchar', length: 32, unique: true })
+  @Column({ type: 'varchar', length: 32, unique: false })
   codigo!: string;
 
-  @Column({ type: 'enum', enum: ['WAITING', 'CALLING', 'SERVED', 'CANCELLED'], default: 'WAITING' })
-  status!: 'WAITING' | 'CALLING' | 'SERVED' | 'CANCELLED';
+  @Column({ type: 'enum', enum: ['WAITING', 'CALLING', 'SERVED', 'CANCELLED', 'DONE'], default: 'WAITING' })
+  status!: 'WAITING' | 'CALLING' | 'SERVED' | 'CANCELLED' | 'DONE';
 
   @Column({ type: 'int', nullable: true })
   ventanilla!: number | null;

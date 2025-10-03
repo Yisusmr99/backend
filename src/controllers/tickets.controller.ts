@@ -8,15 +8,18 @@ import {
   crearTicket as srvCrearTicket,
   pedirSiguiente as srvPedirSiguiente,
   cambiarEstado as srvCambiarEstado,
+  listarTicketsEsperando as srvListarTicketsEsperando,
+  obtenerSiguienteDeCola as srvObtenerSiguienteDeCola,
 } from '../services/ticket.service';
 
 // Estados que maneja la app para validar payloads
 type TicketStatus = 'WAITING' | 'CALLING' | 'SERVED' | 'CANCELLED';
 
-/* ---------- TYPE GUARD para estrechar el tipo ---------- */
-type FinalState = 'CALLING' | 'SERVED' | 'CANCELLED';
-function isFinalState(s: TicketStatus): s is FinalState {
-  return s === 'CALLING' || s === 'SERVED' || s === 'CANCELLED';
+/* ---------- TYPE GUARD para validar estados ---------- */
+// Permitimos SERVED, DONE o CANCELLED como estados finales distintos
+type ValidState = 'SERVED' | 'DONE' | 'CANCELLED';
+function isValidState(s: string): s is ValidState {
+  return s === 'SERVED' || s === 'DONE' || s === 'CANCELLED';
 }
 /* ------------------------------------------------------- */
 
@@ -76,26 +79,76 @@ export async function pedirSiguiente(req: Request, res: Response) {
 
 /**
  * PATCH /api/tickets/:id/estado
- * Cambia estado a CALLING|SERVED|CANCELLED
- * body: { estado: 'CALLING'|'SERVED'|'CANCELLED', porIdUsuario?: number }
+ * Cambia estado a SERVED, DONE o CANCELLED
+ * body: { estado: 'SERVED'|'DONE'|'CANCELLED', porIdUsuario?: number }
  */
 export async function cambiarEstado(req: Request, res: Response) {
   try {
     const id = Number(req.params.id);
     const { estado, porIdUsuario } = req.body as {
-      estado: TicketStatus;
+      estado: string;
       porIdUsuario?: number;
     };
 
-    if (!isFinalState(estado)) {
-      return errorResponse(res, 'Estado inválido. Permitidos: CALLING, SERVED, CANCELLED', 400);
+    if (!isValidState(estado)) {
+      return errorResponse(res, 'Estado inválido. Solo se permite SERVED, DONE o CANCELLED', 400);
     }
 
-    // aquí TS ya sabe que estado es 'CALLING'|'SERVED'|'CANCELLED'
-    const updated = await srvCambiarEstado(id, estado, porIdUsuario);
-    return success(res, updated, 'Estado actualizado');
+    // ahora TS sabe que estado es 'SERVED'|'DONE'|'CANCELLED'
+    const updated = await srvCambiarEstado(id, estado as ValidState, porIdUsuario);
+    
+    // Mensaje personalizado según el estado
+    let mensaje;
+    if (estado === 'SERVED') {
+      mensaje = 'Ticket marcado como atendido';
+    } else if (estado === 'DONE') {
+      mensaje = 'Ticket finalizado completamente';
+    } else if (estado === 'CANCELLED') {
+      mensaje = 'Ticket cancelado';
+    }
+    return success(res, updated, mensaje);
   } catch (err) {
     console.error('[tickets.cambiarEstado] error:', err);
     return errorResponse(res, 'Error al cambiar estado del ticket', 500, err);
+  }
+}
+
+/**
+ * POST /api/tickets/ventanillas/:ventanillaId/tipo/:tipo/next
+ * Obtiene el siguiente mensaje de una cola específica según tipo
+ */
+export async function obtenerSiguienteDeCola(req: Request, res: Response) {
+  try {
+    const ventanillaId = Number(req.params.ventanillaId);
+    const tipo = req.params.tipo as TipoTurno;
+    
+    if (!ventanillaId || Number.isNaN(ventanillaId)) {
+      return errorResponse(res, 'ventanillaId inválido', 400);
+    }
+    
+    if (tipo !== 'C' && tipo !== 'V') {
+      return errorResponse(res, 'tipo inválido. Debe ser C o V', 400);
+    }
+    
+    const turno = await srvObtenerSiguienteDeCola(ventanillaId, tipo);
+    
+    if (!turno) {
+      return success(res, null, `No hay mensajes en la cola para tickets de tipo ${tipo}`);
+    }
+    
+    return success(res, turno, `Ticket de tipo ${tipo} asignado a ventanilla ${ventanillaId}`);
+  } catch (err) {
+    console.error('[tickets.obtenerSiguienteDeCola] error:', err);
+    return errorResponse(res, 'Error al obtener el siguiente mensaje de la cola', 500, err);
+  }
+}
+
+export async function listarTicketsEsperando(req: Request, res: Response) {
+  try {
+    const items = await srvListarTicketsEsperando();
+    return success(res, items, 'Lista de tickets en espera');
+  } catch (err) {
+    console.error('[tickets.listarTicketsEsperando] error:', err);
+    return errorResponse(res, 'Error al listar tickets en espera', 500, err);
   }
 }
