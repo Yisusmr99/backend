@@ -16,7 +16,7 @@ export class EventoTurno {
   @Column({
     name: 'delEstado',
     type: 'enum',
-    enum: ['WAITING', 'CALLING', 'SERVED', 'CANCELLED', 'CREATED'],
+    enum: ['WAITING', 'CALLING', 'SERVED', 'CANCELLED', 'CREATED', 'DONE'],
     nullable: true,
   })
   delEstado!: TurnoStatus | null;
@@ -24,7 +24,7 @@ export class EventoTurno {
   @Column({
     name: 'aEstado',
     type: 'enum',
-    enum: ['WAITING', 'CALLING', 'SERVED', 'CANCELLED', 'CREATED'],
+    enum: ['WAITING', 'CALLING', 'SERVED', 'CANCELLED', 'CREATED', 'DONE'],
     nullable: true,
   })
   aEstado!: TurnoStatus | null;

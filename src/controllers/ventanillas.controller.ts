@@ -96,3 +96,20 @@ export const deleteVentanilla = async (req: Request, res: Response) => {
     return errorResponse(res, 'Error al eliminar ventanilla', 500, err);
   }
 };
+
+
+export const toggleVentanillaActivo = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const repo = AppDataSource.getRepository(Ventanilla);
+    const ventanilla = await repo.findOneBy({ id: Number(id) });
+    if (!ventanilla) {
+      return errorResponse(res, 'Ventanilla no encontrada', 404);
+    }
+    ventanilla.activo = !ventanilla.activo;
+    const updated = await repo.save(ventanilla);
+    return success(res, updated, `Ventanilla ${ventanilla.activo ? 'activada' : 'desactivada'}`);
+  } catch (err) {
+    return errorResponse(res, 'Error al cambiar estado de ventanilla', 500, err);
+  }
+};

@@ -5,11 +5,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import http from 'http';
 
 import { AppDataSource } from './config/database';
 import authRoutes from './routes/auth.routes';
 import ventanillasRoutes from './routes/ventanillas.routes';
 import ticketsRoutes from './routes/tickets.routes';
+import { initializeSocketIO } from './services/socket.service';
 
 dotenv.config();
 
@@ -35,10 +37,18 @@ app.use((_req, res) => res.status(404).json({ message: 'Not found' }));
 // ===== Arranque =====
 const PORT = Number(process.env.PORT || 4000);
 
+// Creamos un servidor HTTP en lugar de usar app.listen directamente
+const server = http.createServer(app);
+
 AppDataSource.initialize()
   .then(() => {
-    app.listen(PORT, () => {
+    // Inicializamos el servicio de WebSockets
+    const io = initializeSocketIO(server);
+    
+    // Iniciamos el servidor HTTP
+    server.listen(PORT, () => {
       console.log(`API escuchando en http://localhost:${PORT}`);
+      console.log('WebSocket server inicializado');
     });
   })
   .catch((err) => {

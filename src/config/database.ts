@@ -1,17 +1,17 @@
-    // src/config/database.ts
-    import 'reflect-metadata';
-    import { DataSource } from 'typeorm';
-    import dotenv from 'dotenv';
-    import path from 'path';
+// src/config/database.ts
+import 'reflect-metadata';
+import { DataSource } from 'typeorm';
+import dotenv from 'dotenv';
+import path from 'path';
 
-    dotenv.config();
+dotenv.config();
 
-    const entitiesGlob = [
-    path.join(__dirname, '..', 'entities', '**', '*.{ts,js}'),
-    path.join(__dirname, '..', 'models', '**', '*.{ts,js}'),
-    ];
+const entitiesGlob = [
+path.join(__dirname, '..', 'entities', '**', '*.{ts,js}'),
+path.join(__dirname, '..', 'models', '**', '*.{ts,js}'),
+];
 
-    export const AppDataSource = new DataSource({
+export const AppDataSource = new DataSource({
     type: 'mysql',
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT),
@@ -21,4 +21,5 @@
     entities: entitiesGlob,
     synchronize: true, 
     logging: false,
-    });
+    timezone: '-06:00', // Establece la zona horaria CST/Mexico (UTC-6)
+});
