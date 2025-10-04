@@ -122,7 +122,7 @@ export async function crearTicket(tipo: 'C' | 'V' = 'C') {
     // Nuevo: Enviar a cola de notificaciones Telegram
     await sendToQueue('telegram.notifications', {
       ...ticketPayload,
-      mensaje: `🎫 Nuevo ticket creado: *${codigo}* (${tipo === 'C' ? 'Cliente' : 'Ventanilla'})`
+      mensaje: `🎫 ¡Tu ticket ha sido creado!\n\nCódigo: *${codigo}*\nTipo: ${tipo === 'C' ? 'Cliente' : 'Ventanilla'}\n\nPor favor espera a ser llamado.`
     });
 
     // Enviar notificación por WebSocket
