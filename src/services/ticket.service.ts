@@ -74,6 +74,7 @@ export async function registrarEvento(
  * Crear ticket con tipo ('C' | 'V'), status WAITING y código corto.
  * Publica: turno.created + turno.status.WAITING
  * Emite WebSocket: ticket.created
+ * Envía mensaje a cola de notificaciones de Telegram
  */
 export async function crearTicket(tipo: 'C' | 'V' = 'C') {
 
@@ -106,23 +107,26 @@ export async function crearTicket(tipo: 'C' | 'V' = 'C') {
   try {
     console.log('Publicando en RabbitMQ...');
     
-    // También mantenemos la publicación en el exchange para compatibilidad
-    await sendToQueue(queueName, {
+    // Payload común para todas las colas
+    const ticketPayload = {
       id: saved.id,
       tipo: (saved as any).tipo,
       codigo: (saved as any).codigo,
       estado: (saved as any).status,
       ts: new Date().toISOString(),
+    };
+    
+    // También mantenemos la publicación en el exchange para compatibilidad
+    await sendToQueue(queueName, ticketPayload);
+
+    // Nuevo: Enviar a cola de notificaciones Telegram
+    await sendToQueue('telegram.notifications', {
+      ...ticketPayload,
+      mensaje: `🎫 Nuevo ticket creado: *${codigo}* (${tipo === 'C' ? 'Cliente' : 'Ventanilla'})`
     });
 
     // Enviar notificación por WebSocket
-    emitToChannel('tickets', 'ticket.created', {
-      id: saved.id,
-      tipo: (saved as any).tipo,
-      codigo: (saved as any).codigo,
-      estado: (saved as any).status,
-      ts: new Date().toISOString(),
-    });
+    emitToChannel('tickets', 'ticket.created', ticketPayload);
   } catch (error) {
     console.error('Error publicando en RabbitMQ o WebSocket:', error);
   }

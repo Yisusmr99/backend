@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import amqplib from 'amqplib';
 import { AppDataSource } from './config/database';
-import { asignarSiguiente } from './services/ticket.service';
+import { sendTelegramMessage } from './services/telegram.service';
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
 const EXCHANGE = process.env.RABBITMQ_EXCHANGE || 'turnos.topic';
@@ -17,50 +17,38 @@ async function setupRabbit(): Promise<any> {
   return ch;
 }
 
-/** --- Comportamiento ORIGINAL: no se toca --- */
-async function consumeNotifyCustomer(channel: any) {
-  const q1 = 'notify.customer';
-  await channel.assertQueue(q1, { durable: true });
-  await channel.bindQueue(q1, EXCHANGE, 'turno.*');
+/** --- NUEVO: notificación por Telegram --- */
+async function consumeTelegramNotifications(channel: any) {
+  const qTelegram = 'telegram.notifications';
+  await channel.assertQueue(qTelegram, { durable: true });
 
-  channel.consume(q1, (msg: any) => {
+  channel.consume(qTelegram, async (msg: any) => {
     if (!msg) return;
     try {
-      const content = msg.content.toString();
-      console.log(`[notify.customer]`, content);
-      // TODO: enviar email/sms...
-      channel.ack(msg);
-    } catch (e) {
-      console.error('[notify.customer] error:', e);
-      channel.nack(msg, false, false);
-    }
-  });
-}
+      const payload = JSON.parse(msg.content.toString());
 
-/** --- NUEVO: asignación de siguiente ticket para ventanillas --- */
-async function consumeVentanillaRequests(channel: any) {
-  const q2 = 'ventanillas.requests';
-  await channel.assertQueue(q2, { durable: true });
-  await channel.bindQueue(q2, EXCHANGE, 'ventanilla.request.next');
-
-  channel.consume(q2, async (msg: any) => {
-    if (!msg) return;
-    try {
-      const { ventanillaId } = JSON.parse(msg.content.toString());
-      if (!ventanillaId) throw new Error('ventanillaId requerido');
-
-      const asignado = await asignarSiguiente(Number(ventanillaId));
-      if (!asignado) {
-        console.log(`[ventanillas.requests] No hay tickets en espera para ventanilla ${ventanillaId}`);
-      } else {
-        console.log(
-          `[ventanillas.requests] Asignado ticket ${asignado.codigo} a ventanilla ${ventanillaId}`
-        );
+      if (!payload.mensaje) {
+        throw new Error('Mensaje requerido para notificación de Telegram');
       }
 
-      channel.ack(msg);
+      console.log(`[telegram.notifications] Enviando mensaje: ${payload.mensaje}`);
+
+      const result = await sendTelegramMessage(payload.mensaje);
+
+      if (result.ok) {
+        console.log(`[telegram.notifications] Mensaje enviado con éxito`);
+        channel.ack(msg);
+      } else {
+        console.error(`[telegram.notifications] Error al enviar mensaje: ${result.description}`);
+        // Solo rechazamos con reintento si es un error temporal
+        const isTemporaryError =
+          result.description?.includes('retry') ||
+          result.description?.includes('too many requests');
+        channel.nack(msg, false, isTemporaryError);
+      }
     } catch (e) {
-      console.error('[ventanillas.requests] error:', e);
+      console.error('[telegram.notifications] error:', e);
+      // Si hay un error de parseo o en el servicio, no lo reintentamos
       channel.nack(msg, false, false);
     }
   });
@@ -76,10 +64,9 @@ async function main() {
     const channel = await setupRabbit();
     console.log('[worker] Conectado a RabbitMQ. Exchange:', EXCHANGE);
 
-    await consumeNotifyCustomer(channel);
-    await consumeVentanillaRequests(channel);
+    await consumeTelegramNotifications(channel);
 
-    console.log('Worker listo. Escuchando colas...');
+    console.log('Worker listo. Escuchando cola de notificaciones de Telegram...');
   } catch (e) {
     console.error('Error al iniciar worker:', e);
     process.exit(1);
