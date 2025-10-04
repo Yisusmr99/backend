@@ -12,6 +12,7 @@ import { env } from './config/env';
 import authRoutes from './routes/auth.routes';
 import ventanillasRoutes from './routes/ventanillas.routes';
 import ticketsRoutes from './routes/tickets.routes';
+import notificationsRoutes from './routes/notifications.routes';
 import { initializeSocketIO } from './services/socket.service';
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/ventanillas', ventanillasRoutes);
 app.use('/api/tickets', ticketsRoutes); // <- tickets
+app.use('/api/notifications', notificationsRoutes);
 
 // ===== 404 =====
 app.use((_req, res) => res.status(404).json({ message: 'Not found' }));
