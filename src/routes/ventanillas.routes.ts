@@ -7,6 +7,8 @@ import {
   deleteVentanilla,
   toggleVentanillaActivo
 } from '../controllers/ventanillas.controller';
+import { authenticate } from '../middleware/authenticate';
+import { authorizeRoles } from '../middleware/authorizeRoles';
 
 const router = Router();
 
